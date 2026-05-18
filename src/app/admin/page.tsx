@@ -1,4 +1,4 @@
-// Path: /app/admin/page.tsx
+// Path: /app/admin/page.tsx  (updated — search for ★ to find every change)
 // @ts-nocheck
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -10,8 +10,10 @@ import {
   XCircle, ChevronRight, Search, MapPin, Weight,
   Zap, Leaf, Recycle, Package, TrendingUp, TrendingDown,
   UserCheck, Download, Loader2, Circle, Shield, Navigation,
-  Timer, Wifi, WifiOff, Radio,
+  Timer, Wifi, WifiOff, Radio, Plus, // ★ added Plus
 } from "lucide-react";
+// ★ Import the new modal
+import { AdminCollectionRequestModal } from "@/components/AdminCollectionRequestModal";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Request {
@@ -100,7 +102,6 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-/** Pulsing dot for live/en-route states */
 function LiveDot({ color = "#10B981" }: { color?: string }) {
   return (
     <span className="relative inline-flex w-2.5 h-2.5 flex-shrink-0">
@@ -134,11 +135,9 @@ function KpiCard({ label, value, sub, icon:Icon, trend, accent }: {
   );
 }
 
-// ─── Live Jobs strip — shown on Overview ──────────────────────────────────────
 function LiveJobsStrip({ requests }: { requests: Request[] }) {
   const live = requests.filter(r => r.status === "en_route" || r.status === "collecting");
   if (!live.length) return null;
-
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
       <div className="px-4 lg:px-6 py-3 border-b border-gray-100 flex items-center gap-2">
@@ -179,7 +178,6 @@ function LiveJobsStrip({ requests }: { requests: Request[] }) {
   );
 }
 
-// ─── PANEL: Overview ──────────────────────────────────────────────────────────
 function OverviewPanel({ stats, requests, loading }: { stats:Stats; requests:Request[]; loading:boolean }) {
   return (
     <div className="space-y-5">
@@ -195,11 +193,7 @@ function OverviewPanel({ stats, requests, loading }: { stats:Stats; requests:Req
         <KpiCard label="Assigned Jobs"   value={stats.assignedRequests} icon={UserCheck}        accent="#0EA5E9"/>
         <KpiCard label="Completion Rate" value={`${stats.completionRate}%`} icon={TrendingUp} trend={2}           accent="#10B981"/>
       </div>
-
-      {/* Live jobs — the most important admin visibility addition */}
       <LiveJobsStrip requests={requests} />
-
-      {/* Recent requests table */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-4 lg:px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <h3 className="font-bold text-gray-900 text-sm">Recent Requests</h3>
@@ -258,7 +252,6 @@ function OverviewPanel({ stats, requests, loading }: { stats:Stats; requests:Req
   );
 }
 
-// ─── PANEL: Requests ──────────────────────────────────────────────────────────
 function RequestsPanel({ requests, drivers, loading, onAssign, onRefresh }: {
   requests:Request[]; drivers:Driver[]; loading:boolean;
   onAssign:(reqId:string,drvId:string,drvName:string)=>Promise<void>; onRefresh:()=>void;
@@ -284,14 +277,12 @@ function RequestsPanel({ requests, drivers, loading, onAssign, onRefresh }: {
     finally { setAssigningId(null); }
   };
 
-  // Group in-progress at top
   const inProgress = filtered.filter(r => r.status==="en_route"||r.status==="collecting");
   const rest       = filtered.filter(r => r.status!=="en_route"&&r.status!=="collecting");
   const ordered    = [...inProgress, ...rest];
 
   return (
     <div className="space-y-4">
-      {/* Filters */}
       <div className="flex flex-wrap gap-2 lg:gap-3">
         <div className="relative flex-1 min-w-[180px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"/>
@@ -420,9 +411,7 @@ function RequestsPanel({ requests, drivers, loading, onAssign, onRefresh }: {
   );
 }
 
-// ─── PANEL: Drivers ───────────────────────────────────────────────────────────
 function DriversPanel({ drivers, loading }: { drivers:Driver[]; loading:boolean }) {
-  // Live-updating "elapsed on job" timer
   const [, forceUpdate] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval>>();
   useEffect(() => {
@@ -436,7 +425,6 @@ function DriversPanel({ drivers, loading }: { drivers:Driver[]; loading:boolean 
     offline: { color:"#6B7280", bg:"#F9FAFB", dot:"#9CA3AF", label:"Offline", Icon:WifiOff },
   };
 
-  // Sort: active-with-job → active-without-job → idle → offline
   const sorted = [...drivers].sort((a,b) => {
     const rank = (d: Driver) =>
       d.status==="active" && d.activeJob ? 0
@@ -450,7 +438,6 @@ function DriversPanel({ drivers, loading }: { drivers:Driver[]; loading:boolean 
 
   return (
     <div className="space-y-4">
-      {/* Quick summary pills */}
       <div className="flex gap-3 flex-wrap">
         {(["active","idle","offline"] as const).map(s => {
           const count = drivers.filter(d=>d.status===s).length;
@@ -480,7 +467,6 @@ function DriversPanel({ drivers, loading }: { drivers:Driver[]; loading:boolean 
             <div key={d._id} className={`bg-white rounded-2xl border p-5 space-y-4 shadow-sm hover:shadow-md transition-all duration-200 ${
               onJob ? "border-purple-200":"border-gray-100"
             }`}>
-              {/* Header */}
               <div className="flex items-center gap-3">
                 <div className="relative flex-shrink-0">
                   <div className="w-11 h-11 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 text-white font-black text-sm flex items-center justify-center shadow-sm">
@@ -502,7 +488,6 @@ function DriversPanel({ drivers, loading }: { drivers:Driver[]; loading:boolean 
                 </span>
               </div>
 
-              {/* Active job block — the main new addition */}
               {onJob ? (
                 <div className="rounded-xl overflow-hidden border border-purple-100">
                   <div className="bg-purple-600 px-3 py-1.5 flex items-center gap-2">
@@ -526,7 +511,6 @@ function DriversPanel({ drivers, loading }: { drivers:Driver[]; loading:boolean 
                 </div>
               )}
 
-              {/* Stats */}
               <div className="grid grid-cols-3 gap-2">
                 {[
                   {label:"Jobs",   value:d.totalJobsCompleted},
@@ -553,7 +537,6 @@ function DriversPanel({ drivers, loading }: { drivers:Driver[]; loading:boolean 
   );
 }
 
-// ─── PANEL: Trucks ────────────────────────────────────────────────────────────
 function TrucksPanel({ trucks, loading }: { trucks:TruckType[]; loading:boolean }) {
   const TS = {
     available:   { label:"Available",   color:"#166534", bg:"#F0FDF4", bar:"#22C55E" },
@@ -604,14 +587,12 @@ function TrucksPanel({ trucks, loading }: { trucks:TruckType[]; loading:boolean 
   );
 }
 
-// ─── PANEL: Activity ──────────────────────────────────────────────────────────
 function ActivityPanel({ activity, loading }: { activity:any[]; loading:boolean }) {
   const meta = (type: string) => {
     switch(type) {
       case "field_issue":          return { Icon:AlertTriangle, color:"#EF4444", bg:"#FEF2F2", label:"Issue" };
       case "collection_completed": return { Icon:CheckCircle2,  color:"#10B981", bg:"#F0FDF9", label:"Done" };
       case "assigned":             return { Icon:UserCheck,     color:"#3B82F6", bg:"#EFF6FF", label:"Assigned" };
-      // ── NEW: status_change events from the activity API ──────────────────
       case "status_change":        return { Icon:Navigation,    color:"#8B5CF6", bg:"#F5F3FF", label:"Status" };
       default:                     return { Icon:Activity,      color:"#6366F1", bg:"#EEF2FF", label:"Event" };
     }
@@ -656,7 +637,6 @@ function ActivityPanel({ activity, loading }: { activity:any[]; loading:boolean 
   );
 }
 
-// ─── PANEL: Reports ───────────────────────────────────────────────────────────
 function ReportsPanel({ stats, requests }: { stats:Stats; requests:Request[] }) {
   const COLORS = ["#10B981","#3B82F6","#F59E0B","#EF4444"];
   const wasteBreakdown = ["general","organic","recycling","hazardous"].map((type,i) => ({
@@ -770,6 +750,9 @@ export default function AdminPage() {
     kgCollectedToday:0, openIssues:0, requestsTrend:0, completionRate:0,
   });
 
+  // ★ New request modal state
+  const [showNewRequest, setShowNewRequest] = useState(false);
+
   const isAdmin = (user as any)?.role==="admin"||(user as any)?.role==="dispatcher";
 
   useEffect(() => {
@@ -814,7 +797,6 @@ export default function AdminPage() {
     if(res.ok) setRequests(prev=>prev.map(r=>r._id===requestId?{...r,status:"assigned",collectorName:driverName}:r));
   };
 
-  // Count live jobs for nav badge
   const liveJobCount = requests.filter(r=>r.status==="en_route"||r.status==="collecting").length;
 
   if (authLoading||(!user&&!authLoading))
@@ -843,10 +825,18 @@ export default function AdminPage() {
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 lg:gap-3">
               <span className="text-xs text-gray-400 hidden md:block font-medium">
                 Updated {lastRefresh.toLocaleTimeString("en-ZA",{hour:"2-digit",minute:"2-digit"})}
               </span>
+              {/* ★ New Request button */}
+              <button
+                onClick={() => setShowNewRequest(true)}
+                className="flex items-center gap-1.5 text-xs text-white bg-green-600 hover:bg-green-700 font-bold transition-colors px-3 py-1.5 rounded-lg shadow-sm"
+              >
+                <Plus className="w-3.5 h-3.5"/>
+                <span className="hidden sm:inline">New Request</span>
+              </button>
               <button onClick={fetchAll} className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-green-700 font-bold transition-colors px-3 py-1.5 rounded-lg hover:bg-green-50">
                 <RefreshCw className={`w-3.5 h-3.5 ${dataLoading?"animate-spin":""}`}/>
                 <span className="hidden sm:inline">Refresh</span>
@@ -885,6 +875,14 @@ export default function AdminPage() {
         {activeTab==="activity" && <ActivityPanel activity={activity} loading={dataLoading}/>}
         {activeTab==="reports"  && <ReportsPanel  stats={stats} requests={requests}/>}
       </div>
+
+      {/* ★ Admin new-request modal */}
+      <AdminCollectionRequestModal
+        open={showNewRequest}
+        onClose={() => setShowNewRequest(false)}
+        drivers={drivers}
+        onCreated={fetchAll}
+      />
     </div>
   );
 }

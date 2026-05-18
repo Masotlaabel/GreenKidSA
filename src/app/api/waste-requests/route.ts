@@ -62,8 +62,8 @@ export async function POST(req: NextRequest) {
 
     const doc = {
       userId:       user.userId,
-      userName:     user.name,
-      userEmail:    user.email,
+      userName:  body.overrideUserName  || user.name,
+      userEmail: body.overrideUserEmail || user.email,
       wasteType,
       amount:       amount || "Unknown",
       location,
