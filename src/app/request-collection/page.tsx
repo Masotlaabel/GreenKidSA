@@ -11,7 +11,7 @@ import { toast } from 'react-hot-toast'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type Urgency = 'low' | 'normal' | 'high'
-type WasteType = 'General' | 'Recyclable' | 'Organic' | 'Hazardous' | 'Electronic' | 'Bulk/Furniture' | 'Garden' | 'Medical'
+type WasteType = 'Household' | 'Recyclable' | 'Waste picker' | 'School' | 'Electronic' | 'Company' | 'Food/Garden' | 'Medical/Hazardous'
 
 interface UploadedImage {
   file: File
@@ -23,14 +23,14 @@ interface UploadedImage {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const WASTE_TYPES: { value: WasteType; label: string; icon: string; color: string }[] = [
-  { value: 'General',        label: 'General Waste',    icon: '🗑️',  color: '#6b7280' },
+  { value: 'Household',        label: 'Household Waste',    icon: '🗑️',  color: '#6b7280' },
   { value: 'Recyclable',     label: 'Recyclable',       icon: '♻️',  color: '#16a34a' },
-  { value: 'Organic',        label: 'Organic / Food',   icon: '🌿',  color: '#65a30d' },
-  { value: 'Hazardous',      label: 'Hazardous',        icon: '⚠️',  color: '#dc2626' },
+  { value: 'Waste picker',        label: 'Waste Picker',   icon: '🌿',  color: '#65a30d' },
+  { value: 'School',      label: 'School Waste',        icon: '⚠️',  color: '#dc2626' },
   { value: 'Electronic',     label: 'E-Waste',          icon: '💻',  color: '#7c3aed' },
-  { value: 'Bulk/Furniture', label: 'Bulk / Furniture', icon: '🛋️',  color: '#92400e' },
-  { value: 'Garden',         label: 'Garden Waste',     icon: '🌳',  color: '#15803d' },
-  { value: 'Medical',        label: 'Medical Waste',    icon: '🏥',  color: '#0891b2' },
+  { value: 'Company', label: 'Company Waste', icon: '🛋️',  color: '#92400e' },
+  { value: 'Food/Garden',         label: 'Food/Garden Waste',     icon: '🌳',  color: '#15803d' },
+  { value: 'Medical/Hazardous',        label: 'Medical/Hazardous Waste',    icon: '🏥',  color: '#0891b2' },
 ]
 
 const URGENCY_OPTIONS: { value: Urgency; label: string; desc: string; color: string }[] = [
