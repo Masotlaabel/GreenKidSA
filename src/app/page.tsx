@@ -5,7 +5,8 @@ import {
   ArrowRight, Leaf, Users, Wind,
   Truck, ClipboardList, Award, ChevronRight, CheckCircle2,
   Mail, Globe, Building2, Shield, BarChart3, Bell,
-  TreePine, Droplets, Sun, ExternalLink, Star, Recycle
+  TreePine, Droplets, Sun, ExternalLink, Star, Recycle, School,
+  Home,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import AuthModal from '@/components/AuthModal'
@@ -312,78 +313,123 @@ export default function Home() {
       <div className="section-divider max-w-6xl mx-auto px-6" />
 
       {/* ── VALUE PROPOSITION ── */}
-      <section className="bg-gradient-to-b from-[#f0f4f1] to-[#e6f0e9] py-24">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <span className="inline-block text-xs uppercase tracking-[0.3em] text-green-600 mb-4 font-medium">Why GreenKidSA</span>
-            <h2 className="text-3xl md:text-4xl font-semibold text-green-900">Built for Every Stakeholder</h2>
+      {/*<section className="bg-gradient-to-b from-[#f0f4f1] to-[#e6f0e9] py-24">
+  <div className="max-w-6xl mx-auto px-6">
+    <div className="text-center mb-16">
+      <span className="inline-block text-xs uppercase tracking-[0.3em] text-green-600 mb-4 font-medium">
+        Why GreenKidSA
+      </span>
+
+      <h2 className="text-3xl md:text-4xl font-semibold text-green-900">
+        Built for Every Stakeholder
+      </h2>
+    </div>
+
+    <div className="grid md:grid-cols-3 gap-6">
+      {[
+        {
+          audience: 'For Communities',
+          icon: Users,
+          color: 'from-green-600 to-emerald-700',
+          points: [
+            'Report waste in seconds via mobile',
+            'Earn reward tokens for participation',
+            'Track collection status in real time',
+            'Build cleaner neighbourhoods together',
+          ],
+        },
+
+        {
+          audience: 'For Wastepickers & Material Recovery',
+          icon: Recycle,
+          color: 'from-teal-600 to-green-700',
+          featured: true,
+          points: [
+            'Receive nearby recyclable collection requests',
+            'Track recyclable materials and collection volumes',
+            'Access digital earnings and pickup history',
+            'Connect directly with recycling networks',
+          ],
+        },
+
+        {
+          audience: 'For Household Waste Management',
+          icon: Home,
+          color: 'from-emerald-700 to-teal-800',
+          points: [
+            'Schedule household waste pickups easily',
+            'Separate recyclable and general waste efficiently',
+            'Receive reminders for collection days',
+            'Monitor household recycling contributions',
+          ],
+        },
+
+        {
+          audience: 'For Schools',
+          icon: School,
+          color: 'from-lime-600 to-green-700',
+          points: [
+            'Promote environmental awareness among learners',
+            'Track school recycling and cleanup activities',
+            'Reward eco-friendly participation and campaigns',
+            'Organize school-wide sustainability programs',
+          ],
+        },
+      ].map(({ audience, icon: Icon, color, points, featured }) => (
+        <div
+          key={audience}
+          className={`rounded-3xl p-8 flex flex-col gap-6 border transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${
+            featured
+              ? 'bg-green-900 border-green-700 shadow-2xl shadow-green-900/20 scale-[1.02]'
+              : 'bg-white border-green-100'
+          }`}
+        >
+          <div
+            className={`w-12 h-12 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center`}
+          >
+            <Icon className="w-6 h-6 text-white" />
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              {
-                audience: 'For Communities',
-                icon: Users,
-                color: 'from-green-600 to-emerald-700',
-                points: [
-                  'Report waste in seconds via mobile',
-                  'Earn reward tokens for participation',
-                  'Track collection status in real time',
-                  'Build cleaner neighbourhoods together',
-                ],
-              },
-              {
-                audience: 'For Workers',
-                icon: Truck,
-                color: 'from-teal-600 to-green-700',
-                featured: true,
-                points: [
-                  'Receive geo-tagged collection tasks',
-                  'Log completed jobs digitally',
-                  'Access earnings & performance records',
-                  'Communicate issues to supervisors',
-                ],
-              },
-              {
-                audience: 'For Administrators',
-                icon: BarChart3,
-                color: 'from-emerald-700 to-teal-800',
-                points: [
-                  'Dashboard with live operational data',
-                  'Manage teams, tasks, and zones',
-                  'Generate compliance reports',
-                  'Track environmental outcomes',
-                ],
-              },
-            ].map(({ audience, icon: Icon, color, points, featured }) => (
-              <div
-                key={audience}
-                className={`rounded-3xl p-8 flex flex-col gap-6 border transition-all duration-300 hover:-translate-y-1 hover:shadow-xl ${
-                  featured
-                    ? 'bg-green-900 border-green-700 shadow-2xl shadow-green-900/20 scale-[1.02]'
-                    : 'bg-white border-green-100'
-                }`}
-              >
-                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center`}>
-                  <Icon className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h3 className={`text-lg font-semibold mb-1 ${featured ? 'text-white' : 'text-green-900'}`}>{audience}</h3>
-                  {featured && <span className="text-xs bg-green-700 text-green-200 px-2 py-0.5 rounded-full">Core users</span>}
-                </div>
-                <ul className="space-y-3">
-                  {points.map(pt => (
-                    <li key={pt} className="flex items-start gap-3">
-                      <CheckCircle2 className={`w-4 h-4 mt-0.5 flex-shrink-0 ${featured ? 'text-green-400' : 'text-green-600'}`} />
-                      <span className={`text-sm leading-relaxed ${featured ? 'text-green-200' : 'text-green-700'}`}>{pt}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+          <div>
+            <h3
+              className={`text-lg font-semibold mb-1 ${
+                featured ? 'text-white' : 'text-green-900'
+              }`}
+            >
+              {audience}
+            </h3>
+
+            {featured && (
+              <span className="text-xs bg-green-700 text-green-200 px-2 py-0.5 rounded-full">
+                Core users
+              </span>
+            )}
           </div>
+
+          <ul className="space-y-3">
+            {points.map((pt) => (
+              <li key={pt} className="flex items-start gap-3">
+                <CheckCircle2
+                  className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
+                    featured ? 'text-green-400' : 'text-green-600'
+                  }`}
+                />
+
+                <span
+                  className={`text-sm leading-relaxed ${
+                    featured ? 'text-green-200' : 'text-green-700'
+                  }`}
+                >
+                  {pt}
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
-      </section>
+      ))}
+    </div>
+  </div>
+</section>*/}
 
       {/* ── QUICK ACTIONS ── */}
       <section className="max-w-6xl mx-auto px-6 py-24">
@@ -543,13 +589,13 @@ export default function Home() {
               desc: 'The GreenKidSA token economy has reached a major milestone, with Schools earning and redeeming rewards for environmental action.',
               color: 'bg-teal-100 text-teal-700',
             },
-            {
-              tag: 'Expansion',
-              date: '',
-              title: 'New Partnership with Mangaung Municipality',
-              desc: 'GreenKidSA has formalised a service agreement to digitise waste management operations across the Mangaung Metropolitan Municipality.',
-              color: 'bg-emerald-100 text-emerald-700',
-            },
+           {
+  tag: 'Expansion',
+  date: '',
+  title: 'New Partnership with Local Schools',
+  desc: 'GreenKidSA has formalised a service agreement to support digital learning and environmental education initiatives across participating schools.',
+  color: 'bg-emerald-100 text-emerald-700',
+},
           ].map(({ tag, date, title, desc, color }) => (
             <article key={title} className="group bg-white border border-green-100 rounded-2xl p-7 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col gap-4">
               <div className="flex items-center justify-between">
