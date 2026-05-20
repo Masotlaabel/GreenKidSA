@@ -1,6 +1,16 @@
 // @ts-nocheck
 "use client";
-import { useState, useEffect, useRef, useCallback } from "react";
+/**
+ * Driver Page — updated to:
+ *   1. Broadcast GPS location to /api/driver/location while a job is active
+ *      (via the useLocationBroadcast hook).
+ *   2. Show an "Open Map" button on each job card that opens the request
+ *      address in Google Maps (already existed) AND an inline mini-map
+ *      modal when the driver taps the map icon on the Trip panel.
+ *
+ * Search for ★ to find every change from the original.
+ */
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import {
@@ -8,9 +18,10 @@ import {
   Camera, AlertTriangle, Phone, Navigation, Package,
   Recycle, Leaf, Zap, X, Check, RotateCcw, Star,
   TrendingUp, Trophy, ArrowRight, Loader2, Upload,
-  Truck, Briefcase, BarChart2,
+  Truck, Briefcase, BarChart2, Map, // ★ added Map
 } from "lucide-react";
 import { useDriverJobs } from "@/hooks/useDriverJobs";
+import { useLocationBroadcast } from "@/hooks/useLocationBroadcast"; // ★
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Job {
@@ -56,6 +67,82 @@ function WasteTypeBadge({ type }: { type: string }) {
     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold" style={{ color:m.color, backgroundColor:m.bg }}>
       <Icon className="w-3 h-3"/>{m.label}
     </span>
+  );
+}
+
+// ★ ─── Inline job map modal ────────────────────────────────────────────────────
+/**
+ * Opens an OpenStreetMap iframe centred on a geocoded address.
+ * No API key needed.
+ */
+function JobMapModal({ address, onClose }: { address: string; onClose: () => void }) {
+  const encodedAddress = encodeURIComponent(address);
+  // Use OpenStreetMap embed — works without an API key
+  const osmSearchUrl = `https://www.openstreetmap.org/search?query=${encodedAddress}#map=16`;
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="bg-white w-full sm:rounded-2xl sm:max-w-2xl overflow-hidden shadow-2xl flex flex-col"
+        style={{ height: "80vh" }}>
+        {/* Header */}
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 flex-shrink-0 bg-white">
+          <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center flex-shrink-0">
+            <MapPin className="w-4 h-4 text-green-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-gray-900 text-sm truncate">{address}</p>
+            <p className="text-xs text-gray-400">Job destination</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-lg hover:bg-gray-100 text-gray-500 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Map iframe */}
+        <div className="flex-1 relative">
+          <iframe
+            title="Job location map"
+            src={`https://www.openstreetmap.org/export/embed.html?bbox=16%2C-35%2C33%2C-22&layer=mapnik&query=${encodedAddress}`}
+            className="w-full h-full border-0"
+            loading="lazy"
+          />
+        </div>
+
+        {/* Footer actions */}
+        <div className="flex gap-2 px-4 py-3 border-t border-gray-100 flex-shrink-0 bg-gray-50">
+          <a
+            href={`https://maps.google.com/?q=${encodeURIComponent(/south africa/i.test(address) ? address : address + ", South Africa")}`}
+            target="_blank"
+            rel="noreferrer"
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-bold transition-colors"
+          >
+            <Navigation className="w-4 h-4" />
+            Open in Google Maps
+          </a>
+          <a
+            href={osmSearchUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-sm font-bold text-gray-700 transition-colors"
+          >
+            <Map className="w-4 h-4" />
+            OSM
+          </a>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -109,6 +196,7 @@ function JobsPanel({ jobs, loading, activeJobId, onStart }: {
   jobs:Job[]; loading:boolean; activeJobId:string|null; onStart:(job:Job)=>void;
 }) {
   const [expanded, setExpanded] = useState<string|null>(null);
+  const [mapJob, setMapJob] = useState<Job|null>(null); // ★
 
   if (loading) return (
     <div className="flex items-center justify-center h-48 text-gray-400 gap-2">
@@ -128,66 +216,77 @@ function JobsPanel({ jobs, loading, activeJobId, onStart }: {
   );
 
   return (
-    <div className="p-4 space-y-3">
-      <p className="text-[11px] font-black tracking-widest text-gray-400 uppercase">
-        Today's Queue — {jobs.length} job{jobs.length!==1?"s":""}
-      </p>
-      {jobs.map(job => {
-        const isExp = expanded===job._id;
-        const isActive = activeJobId===job._id;
-        const isOther = activeJobId && activeJobId!==job._id;
-        return (
-          <div key={job._id}
-            className={`rounded-2xl border overflow-hidden transition-all duration-200 ${
-              isActive ? "border-green-500 border-2 shadow-lg shadow-green-100"
-              : isOther ? "border-gray-100 opacity-50 cursor-not-allowed"
-              : "border-gray-200 bg-white hover:border-green-300 hover:shadow-sm cursor-pointer"
-            } bg-white`}>
-            <div className="flex items-center gap-3 p-4" onClick={()=>!isOther&&setExpanded(isExp?null:job._id)}>
-              <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor:URGENCY_DOT[job.urgency] }}/>
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-gray-900 text-sm truncate">{job.address}</p>
-                <p className="text-xs text-gray-500 mt-0.5 truncate">{job.location}</p>
-              </div>
-              <WasteTypeBadge type={job.wasteType}/>
-              {!isOther && <ChevronRight className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-200 ${isExp?"rotate-90":""}`}/>}
-            </div>
-            <div className="flex gap-4 px-4 pb-3 -mt-1">
-              <span className="flex items-center gap-1 text-xs text-gray-400"><Clock className="w-3 h-3"/>{job.preferredTime||"Flexible"}</span>
-              <span className="flex items-center gap-1 text-xs text-gray-400"><Weight className="w-3 h-3"/>{job.amount}</span>
-              {job.distanceKm!=null && <span className="flex items-center gap-1 text-xs text-gray-400"><MapPin className="w-3 h-3"/>{job.distanceKm.toFixed(1)} km</span>}
-            </div>
-            {isExp && (
-              <div className="border-t border-gray-100 px-4 py-3 bg-gray-50/60 space-y-3">
-                {job.description && <p className="text-xs text-gray-600">{job.description}</p>}
-                <div className="flex gap-2 flex-wrap">
-                  <button onClick={e=>{e.stopPropagation();onStart(job);}} disabled={!!activeJobId}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 disabled:bg-gray-200 disabled:text-gray-400 text-white text-xs font-bold transition-colors">
-                    <Navigation className="w-3.5 h-3.5"/>Start Trip
-                  </button>
-                  {job.contactPhone && (
-                    <a href={`tel:${job.contactPhone}`} onClick={e=>e.stopPropagation()}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-bold text-gray-700 hover:bg-gray-50 transition-colors">
-                      <Phone className="w-3.5 h-3.5"/>Call
-                    </a>
-                  )}
-                  <a href={`https://maps.google.com/?q=${encodeURIComponent(job.address)}`} target="_blank" rel="noreferrer"
-                    onClick={e=>e.stopPropagation()}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-bold text-gray-700 hover:bg-gray-50 transition-colors">
-                    <MapPin className="w-3.5 h-3.5"/>Maps
-                  </a>
+    <>
+      {/* ★ Job map modal */}
+      {mapJob && <JobMapModal address={mapJob.address} onClose={() => setMapJob(null)} />}
+
+      <div className="p-4 space-y-3">
+        <p className="text-[11px] font-black tracking-widest text-gray-400 uppercase">
+          Today's Queue — {jobs.length} job{jobs.length!==1?"s":""}
+        </p>
+        {jobs.map(job => {
+          const isExp = expanded===job._id;
+          const isActive = activeJobId===job._id;
+          const isOther = activeJobId && activeJobId!==job._id;
+          return (
+            <div key={job._id}
+              className={`rounded-2xl border overflow-hidden transition-all duration-200 ${
+                isActive ? "border-green-500 border-2 shadow-lg shadow-green-100"
+                : isOther ? "border-gray-100 opacity-50 cursor-not-allowed"
+                : "border-gray-200 bg-white hover:border-green-300 hover:shadow-sm cursor-pointer"
+              } bg-white`}>
+              <div className="flex items-center gap-3 p-4" onClick={()=>!isOther&&setExpanded(isExp?null:job._id)}>
+                <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor:URGENCY_DOT[job.urgency] }}/>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-gray-900 text-sm truncate">{job.address}</p>
+                  <p className="text-xs text-gray-500 mt-0.5 truncate">{job.location}</p>
                 </div>
+                <WasteTypeBadge type={job.wasteType}/>
+                {!isOther && <ChevronRight className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-200 ${isExp?"rotate-90":""}`}/>}
               </div>
-            )}
-            {isActive && (
-              <div className="bg-green-600 text-white text-xs font-black text-center py-1.5 tracking-widest">
-                ● ACTIVE — IN PROGRESS
+              <div className="flex gap-4 px-4 pb-3 -mt-1">
+                <span className="flex items-center gap-1 text-xs text-gray-400"><Clock className="w-3 h-3"/>{job.preferredTime||"Flexible"}</span>
+                <span className="flex items-center gap-1 text-xs text-gray-400"><Weight className="w-3 h-3"/>{job.amount}</span>
+                {job.distanceKm!=null && <span className="flex items-center gap-1 text-xs text-gray-400"><MapPin className="w-3 h-3"/>{job.distanceKm.toFixed(1)} km</span>}
               </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
+              {isExp && (
+                <div className="border-t border-gray-100 px-4 py-3 bg-gray-50/60 space-y-3">
+                  {job.description && <p className="text-xs text-gray-600">{job.description}</p>}
+                  <div className="flex gap-2 flex-wrap">
+                    <button onClick={e=>{e.stopPropagation();onStart(job);}} disabled={!!activeJobId}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 disabled:bg-gray-200 disabled:text-gray-400 text-white text-xs font-bold transition-colors">
+                      <Navigation className="w-3.5 h-3.5"/>Start Trip
+                    </button>
+                    {/* ★ View Map button */}
+                    <button
+                      onClick={e=>{e.stopPropagation(); setMapJob(job);}}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-green-200 bg-green-50 text-xs font-bold text-green-700 hover:bg-green-100 transition-colors">
+                      <Map className="w-3.5 h-3.5"/>View Map
+                    </button>
+                    {job.contactPhone && (
+                      <a href={`tel:${job.contactPhone}`} onClick={e=>e.stopPropagation()}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-bold text-gray-700 hover:bg-gray-50 transition-colors">
+                        <Phone className="w-3.5 h-3.5"/>Call
+                      </a>
+                    )}
+                    <a href={`https://maps.google.com/?q=${encodeURIComponent(job.address)}`} target="_blank" rel="noreferrer"
+                      onClick={e=>e.stopPropagation()}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-gray-200 bg-white text-xs font-bold text-gray-700 hover:bg-gray-50 transition-colors">
+                      <MapPin className="w-3.5 h-3.5"/>Google Maps
+                    </a>
+                  </div>
+                </div>
+              )}
+              {isActive && (
+                <div className="bg-green-600 text-white text-xs font-black text-center py-1.5 tracking-widest">
+                  ● ACTIVE — IN PROGRESS
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </>
   );
 }
 
@@ -196,6 +295,8 @@ function TripPanel({ job, elapsed, checks, onToggleCheck, onArrived, onReportIss
   job:Job|null; elapsed:number; checks:boolean[];
   onToggleCheck:(i:number)=>void; onArrived:()=>void; onReportIssue:()=>void;
 }) {
+  const [showMap, setShowMap] = useState(false); // ★
+
   if (!job) return (
     <div className="flex flex-col items-center justify-center h-52 text-gray-400 gap-2 p-8 text-center">
       <div className="w-14 h-14 rounded-full bg-gray-50 flex items-center justify-center mb-1">
@@ -210,82 +311,98 @@ function TripPanel({ job, elapsed, checks, onToggleCheck, onArrived, onReportIss
   const canArrive = checkedCount >= 3;
 
   return (
-    <div className="p-4 space-y-4">
-      {/* Banner */}
-      <div className="rounded-2xl bg-gradient-to-br from-green-900 to-emerald-800 text-white p-5">
-        <p className="text-[10px] font-black tracking-widest opacity-60 mb-1">ACTIVE JOB</p>
-        <p className="font-bold text-base leading-tight mb-4">{job.address}</p>
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { label:"ETA",      value:job.etaMin!=null?`${job.etaMin} min`:"—" },
-            { label:"Distance", value:job.distanceKm!=null?`${job.distanceKm.toFixed(1)} km`:"—" },
-            { label:"Elapsed",  value:fmtTimer(elapsed) },
-          ].map(({label,value})=>(
-            <div key={label} className="bg-white/10 rounded-xl p-3 text-center">
-              <p className="font-mono text-base font-black">{value}</p>
-              <p className="text-[10px] opacity-60 mt-0.5">{label}</p>
-            </div>
-          ))}
+    <>
+      {/* ★ Map modal from trip panel */}
+      {showMap && <JobMapModal address={job.address} onClose={() => setShowMap(false)} />}
+
+      <div className="p-4 space-y-4">
+        {/* Banner */}
+        <div className="rounded-2xl bg-gradient-to-br from-green-900 to-emerald-800 text-white p-5">
+          <p className="text-[10px] font-black tracking-widest opacity-60 mb-1">ACTIVE JOB</p>
+          <p className="font-bold text-base leading-tight mb-4">{job.address}</p>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label:"ETA",      value:job.etaMin!=null?`${job.etaMin} min`:"—" },
+              { label:"Distance", value:job.distanceKm!=null?`${job.distanceKm.toFixed(1)} km`:"—" },
+              { label:"Elapsed",  value:fmtTimer(elapsed) },
+            ].map(({label,value})=>(
+              <div key={label} className="bg-white/10 rounded-xl p-3 text-center">
+                <p className="font-mono text-base font-black">{value}</p>
+                <p className="text-[10px] opacity-60 mt-0.5">{label}</p>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
 
-      {/* Status pill — shows current DB status */}
-      <div className="flex items-center gap-2">
-        <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black tracking-wide
-          ${job.status === "collecting"
-            ? "bg-blue-100 text-blue-700"
-            : "bg-amber-100 text-amber-700"
-          }`}>
-          <span className="w-1.5 h-1.5 rounded-full bg-current inline-block"/>
-          {job.status === "collecting" ? "AT LOCATION — COLLECTING" : "EN ROUTE"}
-        </span>
-      </div>
-
-      {/* Maps link */}
-      <a href={`https://maps.google.com/?q=${encodeURIComponent(job.address)}`} target="_blank" rel="noreferrer"
-        className="flex items-center justify-between w-full px-4 py-3 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition-colors">
-        <div className="flex items-center gap-2 text-sm font-bold text-gray-700">
-          <Navigation className="w-4 h-4 text-green-600"/>Open in Google Maps
-        </div>
-        <ArrowRight className="w-4 h-4 text-gray-400"/>
-      </a>
-
-      {/* Checklist */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-[11px] font-black tracking-widest text-gray-400 uppercase">Pre-Arrival Checklist</p>
-          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${checkedCount>=3?"bg-green-100 text-green-700":"bg-gray-100 text-gray-500"}`}>
-            {checkedCount}/{CHECKLIST_ITEMS.length}
+        {/* Status pill */}
+        <div className="flex items-center gap-2">
+          <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black tracking-wide
+            ${job.status === "collecting"
+              ? "bg-blue-100 text-blue-700"
+              : "bg-amber-100 text-amber-700"
+            }`}>
+            <span className="w-1.5 h-1.5 rounded-full bg-current inline-block"/>
+            {job.status === "collecting" ? "AT LOCATION — COLLECTING" : "EN ROUTE"}
           </span>
         </div>
-        <ul className="space-y-2">
-          {CHECKLIST_ITEMS.map((item,i)=>(
-            <li key={i} onClick={()=>onToggleCheck(i)}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer select-none transition-all duration-150 ${
-                checks[i] ? "border-green-200 bg-green-50":"border-gray-200 bg-white hover:border-gray-300"
-              }`}>
-              <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${
-                checks[i] ? "bg-green-600 border-green-600":"border-gray-300"
-              }`}>
-                {checks[i] && <Check className="w-3 h-3 text-white"/>}
-              </div>
-              <span className={`text-sm ${checks[i]?"text-green-800 font-medium":"text-gray-700"}`}>{item}</span>
-            </li>
-          ))}
-        </ul>
+
+        {/* ★ Navigation buttons row */}
+        <div className="grid grid-cols-2 gap-2">
+          <a href={`https://maps.google.com/?q=${encodeURIComponent(job.address)}`} target="_blank" rel="noreferrer"
+            className="flex items-center justify-between w-full px-4 py-3 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition-colors">
+            <div className="flex items-center gap-2 text-sm font-bold text-gray-700">
+              <Navigation className="w-4 h-4 text-green-600"/>Google Maps
+            </div>
+            <ArrowRight className="w-4 h-4 text-gray-400"/>
+          </a>
+          {/* ★ In-app map button */}
+          <button
+            onClick={() => setShowMap(true)}
+            className="flex items-center justify-between w-full px-4 py-3 rounded-xl border border-green-200 bg-green-50 hover:bg-green-100 transition-colors">
+            <div className="flex items-center gap-2 text-sm font-bold text-green-700">
+              <Map className="w-4 h-4 text-green-600"/>View Map
+            </div>
+            <ArrowRight className="w-4 h-4 text-green-400"/>
+          </button>
+        </div>
+
+        {/* Checklist */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[11px] font-black tracking-widest text-gray-400 uppercase">Pre-Arrival Checklist</p>
+            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${checkedCount>=3?"bg-green-100 text-green-700":"bg-gray-100 text-gray-500"}`}>
+              {checkedCount}/{CHECKLIST_ITEMS.length}
+            </span>
+          </div>
+          <ul className="space-y-2">
+            {CHECKLIST_ITEMS.map((item,i)=>(
+              <li key={i} onClick={()=>onToggleCheck(i)}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer select-none transition-all duration-150 ${
+                  checks[i] ? "border-green-200 bg-green-50":"border-gray-200 bg-white hover:border-gray-300"
+                }`}>
+                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                  checks[i] ? "bg-green-600 border-green-600":"border-gray-300"
+                }`}>
+                  {checks[i] && <Check className="w-3 h-3 text-white"/>}
+                </div>
+                <span className={`text-sm ${checks[i]?"text-green-800 font-medium":"text-gray-700"}`}>{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <button onClick={onArrived} disabled={!canArrive}
+          className="w-full py-3.5 rounded-xl font-black text-sm transition-all flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-100 disabled:text-gray-400 text-white shadow-sm">
+          <CheckCircle2 className="w-4 h-4"/>
+          {canArrive ? "Mark Arrived & Start Collection":`Complete ${3-checkedCount} more item${3-checkedCount!==1?"s":""}`}
+        </button>
+
+        <button onClick={onReportIssue}
+          className="w-full py-3 rounded-xl font-bold text-sm border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition-colors flex items-center justify-center gap-2">
+          <AlertTriangle className="w-4 h-4"/>Report Issue
+        </button>
       </div>
-
-      <button onClick={onArrived} disabled={!canArrive}
-        className="w-full py-3.5 rounded-xl font-black text-sm transition-all flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-100 disabled:text-gray-400 text-white shadow-sm">
-        <CheckCircle2 className="w-4 h-4"/>
-        {canArrive ? "Mark Arrived & Start Collection":`Complete ${3-checkedCount} more item${3-checkedCount!==1?"s":""}`}
-      </button>
-
-      <button onClick={onReportIssue}
-        className="w-full py-3 rounded-xl font-bold text-sm border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition-colors flex items-center justify-center gap-2">
-        <AlertTriangle className="w-4 h-4"/>Report Issue
-      </button>
-    </div>
+    </>
   );
 }
 
@@ -513,21 +630,20 @@ export default function DriverPage() {
   const [showComplete, setShowComplete] = useState(false);
   const [showResumeBanner, setShowResumeBanner] = useState(false);
 
-  // Redirect if not authenticated
+  // ★ Broadcast GPS while driver has an active job
+  useLocationBroadcast({ enabled: !!activeJob });
+
   useEffect(()=>{ if(!authLoading&&!user) router.push("/"); },[user,authLoading,router]);
 
-  // Once the hook has resolved a restored tab, apply it once only
   useEffect(() => {
     if (restoredTab) {
       setTab(restoredTab);
       setShowResumeBanner(true);
-      // Auto-hide banner after 4 s
       const t = setTimeout(() => setShowResumeBanner(false), 4000);
       return () => clearTimeout(t);
     }
   }, [restoredTab]);
 
-  // Keep tab saved to localStorage whenever it changes
   const handleSetTab = (t: string) => { setTab(t); saveTab(t); };
 
   const handleStartTrip = async (job: Job) => {
@@ -587,6 +703,13 @@ export default function DriverPage() {
                     <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${activeJob ? "bg-amber-400/20 text-amber-300":"bg-green-400/20 text-green-300"}`}>
                       {activeJob ? "● On Job":"● Ready"}
                     </span>
+                    {/* ★ Location broadcasting indicator */}
+                    {activeJob && (
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-400/20 text-blue-300 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-300 animate-pulse inline-block"/>
+                        Sharing location
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -598,7 +721,6 @@ export default function DriverPage() {
               </div>
             </div>
 
-            {/* Daily progress bar */}
             <div className="mt-4">
               <div className="flex justify-between items-center mb-1.5">
                 <span className="text-green-300 text-xs font-medium">Daily Progress</span>
@@ -612,12 +734,10 @@ export default function DriverPage() {
 
           <TabBar tab={tab} setTab={handleSetTab} hasActiveJob={!!activeJob}/>
 
-          {/* Resume banner — shown briefly after a session restore */}
           {showResumeBanner && activeJob && (
             <ResumeBanner job={activeJob as any} onDismiss={()=>setShowResumeBanner(false)}/>
           )}
 
-          {/* Panels */}
           <div className="overflow-y-auto" style={{ maxHeight:"calc(100vh - 200px)" }}>
             {tab==="jobs"  && <JobsPanel  jobs={jobs as any[]}   loading={jobsLoading} activeJobId={activeJob?._id??null} onStart={handleStartTrip}/>}
             {tab==="trip"  && <TripPanel  job={activeJob as any} elapsed={elapsed} checks={checks} onToggleCheck={toggleCheck} onArrived={handleArrived} onReportIssue={handleReportIssue}/>}

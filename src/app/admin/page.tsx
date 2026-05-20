@@ -10,10 +10,11 @@ import {
   XCircle, ChevronRight, Search, MapPin, Weight,
   Zap, Leaf, Recycle, Package, TrendingUp, TrendingDown,
   UserCheck, Download, Loader2, Circle, Shield, Navigation,
-  Timer, Wifi, WifiOff, Radio, Plus, // ★ added Plus
+  Timer, Wifi, WifiOff, Radio, Plus,
+  Map, // ★ added Map
 } from "lucide-react";
-// ★ Import the new modal
 import { AdminCollectionRequestModal } from "@/components/AdminCollectionRequestModal";
+import { AdminDriverMapModal } from "@/components/AdminDriverMapModal"; // ★
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Request {
@@ -371,6 +372,15 @@ function RequestsPanel({ requests, drivers, loading, onAssign, onRefresh }: {
                       </div>
                     ))}
                   </div>
+                  {/* ★ Map link for the request address */}
+                  <a
+                    href={`https://maps.google.com/?q=${encodeURIComponent(r.address)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 font-semibold"
+                  >
+                    <MapPin className="w-3.5 h-3.5"/>View on Google Maps
+                  </a>
                   {(r.status==="pending"||r.status==="assigned") && (
                     <div className="flex items-center gap-2 lg:gap-3">
                       <select id={`assign-${r._id}`} defaultValue=""
@@ -411,7 +421,8 @@ function RequestsPanel({ requests, drivers, loading, onAssign, onRefresh }: {
   );
 }
 
-function DriversPanel({ drivers, loading }: { drivers:Driver[]; loading:boolean }) {
+// ★ DriversPanel now has a "Live Map" button at the top
+function DriversPanel({ drivers, loading, onOpenMap }: { drivers:Driver[]; loading:boolean; onOpenMap:()=>void }) {
   const [, forceUpdate] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval>>();
   useEffect(() => {
@@ -438,7 +449,7 @@ function DriversPanel({ drivers, loading }: { drivers:Driver[]; loading:boolean 
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-3 flex-wrap">
+      <div className="flex gap-3 flex-wrap items-center">
         {(["active","idle","offline"] as const).map(s => {
           const count = drivers.filter(d=>d.status===s).length;
           const meta  = SS[s];
@@ -454,6 +465,14 @@ function DriversPanel({ drivers, loading }: { drivers:Driver[]; loading:boolean 
           <LiveDot color="#8B5CF6"/>
           {drivers.filter(d=>d.activeJob).length} on job now
         </div>
+        {/* ★ Live Map button */}
+        <button
+          onClick={onOpenMap}
+          className="ml-auto flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors shadow-sm"
+        >
+          <Map className="w-3.5 h-3.5"/>
+          Live Map
+        </button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -750,8 +769,8 @@ export default function AdminPage() {
     kgCollectedToday:0, openIssues:0, requestsTrend:0, completionRate:0,
   });
 
-  // ★ New request modal state
   const [showNewRequest, setShowNewRequest] = useState(false);
+  const [showDriverMap, setShowDriverMap]   = useState(false); // ★
 
   const isAdmin = (user as any)?.role==="admin"||(user as any)?.role==="dispatcher";
 
@@ -829,7 +848,14 @@ export default function AdminPage() {
               <span className="text-xs text-gray-400 hidden md:block font-medium">
                 Updated {lastRefresh.toLocaleTimeString("en-ZA",{hour:"2-digit",minute:"2-digit"})}
               </span>
-              {/* ★ New Request button */}
+              {/* ★ Live Map button in top bar */}
+              <button
+                onClick={() => setShowDriverMap(true)}
+                className="flex items-center gap-1.5 text-xs text-white bg-blue-600 hover:bg-blue-700 font-bold transition-colors px-3 py-1.5 rounded-lg shadow-sm"
+              >
+                <Map className="w-3.5 h-3.5"/>
+                <span className="hidden sm:inline">Live Map</span>
+              </button>
               <button
                 onClick={() => setShowNewRequest(true)}
                 className="flex items-center gap-1.5 text-xs text-white bg-green-600 hover:bg-green-700 font-bold transition-colors px-3 py-1.5 rounded-lg shadow-sm"
@@ -870,18 +896,25 @@ export default function AdminPage() {
       <div className="max-w-screen-2xl mx-auto px-3 sm:px-6 lg:px-8 py-4 lg:py-6">
         {activeTab==="overview" && <OverviewPanel stats={stats} requests={requests} loading={dataLoading}/>}
         {activeTab==="requests" && <RequestsPanel requests={requests} drivers={drivers} loading={dataLoading} onAssign={handleAssign} onRefresh={fetchAll}/>}
-        {activeTab==="drivers"  && <DriversPanel  drivers={drivers}  loading={dataLoading}/>}
+        {/* ★ Pass onOpenMap to DriversPanel */}
+        {activeTab==="drivers"  && <DriversPanel  drivers={drivers}  loading={dataLoading} onOpenMap={() => setShowDriverMap(true)}/>}
         {activeTab==="trucks"   && <TrucksPanel   trucks={trucks}    loading={dataLoading}/>}
         {activeTab==="activity" && <ActivityPanel activity={activity} loading={dataLoading}/>}
         {activeTab==="reports"  && <ReportsPanel  stats={stats} requests={requests}/>}
       </div>
 
-      {/* ★ Admin new-request modal */}
+      {/* Modals */}
       <AdminCollectionRequestModal
         open={showNewRequest}
         onClose={() => setShowNewRequest(false)}
         drivers={drivers}
         onCreated={fetchAll}
+      />
+
+      {/* ★ Live driver map modal */}
+      <AdminDriverMapModal
+        open={showDriverMap}
+        onClose={() => setShowDriverMap(false)}
       />
     </div>
   );

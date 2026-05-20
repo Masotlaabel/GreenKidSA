@@ -108,7 +108,7 @@ export default function Home() {
           [200,120],[450,100],[650,90],[850,110],[1050,95],[1250,115],[80,150],
           [350,160],[600,140],[800,170],[1000,155],[1200,145],[1400,160],
         ].map(([x,y],i) => (
-          <circle key={i} cx={x} cy={y} r={Math.random()*1.2+0.6} fill="#d1fae5" opacity={0.6 + (i%3)*0.12}>
+          <circle key={i} cx={x} cy={y} r={0.6 + ((i * 7 + 13) % 12) / 10} fill="#d1fae5" opacity={0.6 + (i%3)*0.12}>
             <animate attributeName="opacity" values={`${0.3+(i%4)*0.15};${0.9};${0.3+(i%4)*0.15}`} dur={`${2.5+(i%5)*0.7}s`} repeatCount="indefinite" />
           </circle>
         ))}
