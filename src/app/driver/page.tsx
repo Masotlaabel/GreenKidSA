@@ -840,7 +840,7 @@ function DayPanel({ summary, jobs }: { summary: DaySummary; jobs: Job[] }) {
         ))}
       </div>
 
-      <div className="bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-2xl px-4 py-4 flex items-center gap-3">
+      {/*<div className="bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-2xl px-4 py-4 flex items-center gap-3">
         <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
           <Trophy className="w-5 h-5 text-amber-500" />
         </div>
@@ -848,7 +848,7 @@ function DayPanel({ summary, jobs }: { summary: DaySummary; jobs: Job[] }) {
           <p className="text-sm font-black text-amber-900">You're in the top 10%</p>
           <p className="text-xs text-amber-700">Keep it up to claim your weekly bonus!</p>
         </div>
-      </div>
+      </div>*/}
 
       {/* Route progress */}
       <div>
