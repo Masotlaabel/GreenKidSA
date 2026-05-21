@@ -10,7 +10,7 @@ const PUBLIC_ITEMS = [
   { href: "/",                   icon: Home,       label: "Home" },
   { href: "/request-collection", icon: MapPin,     label: "Report Waste" },
   //{ href: "/collect",            icon: Trash,      label: "Collect Waste" },
-  { href: "/rewards",            icon: Coins,      label: "Rewards" },
+  //{ href: "/rewards",            icon: Coins,      label: "Rewards" },
   { href: "/leaderboard",        icon: Medal,      label: "Leaderboard" },
   { href: "/my-requests", icon: ClipboardList, label: "My Requests" },
   { href: "/about",              icon: Leaf,       label: "About Us" },

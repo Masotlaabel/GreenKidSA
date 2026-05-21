@@ -171,16 +171,16 @@ function OverviewPanel({ stats, requests, loading }: { stats:Stats; requests:Req
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
-        <KpiCard label="Total Requests"  value={stats.totalRequests}    sub={`${stats.pendingRequests} pending`} icon={Inbox}        trend={stats.requestsTrend} accent="#6366F1"/>
-        <KpiCard label="Completed Today" value={stats.completedToday}   sub={`${stats.completionRate}% rate`}    icon={CheckCircle2} trend={4}                   accent="#10B981"/>
-        <KpiCard label="Active Drivers"  value={`${stats.activeDrivers}/${stats.totalDrivers}`} sub="on shift"  icon={Users}        accent="#F59E0B"/>
-        <KpiCard label="Kg Collected"    value={stats.kgCollectedToday} sub="today"                              icon={Weight}       trend={12}                  accent="#14B8A6"/>
+        <KpiCard label="Total Requests"  value={stats.totalRequests}    sub={`${stats.pendingRequests} pending`} icon={Inbox}        trend={stats.requestsTrend}/>
+        <KpiCard label="Completed Today" value={stats.completedToday}   sub={`${stats.completionRate}% rate`}    icon={CheckCircle2} trend={4}/>
+        <KpiCard label="Active Drivers"  value={`${stats.activeDrivers}/${stats.totalDrivers}`} sub="on shift"  icon={Users}/>
+        <KpiCard label="Kg Collected"    value={stats.kgCollectedToday} sub="today"                              icon={Weight}       trend={12}/>
       </div>
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
-        <KpiCard label="Trucks On Route" value={`${stats.trucksOnRoute}/${stats.totalTrucks}`} icon={Truck}        accent="#8B5CF6"/>
-        <KpiCard label="Open Issues"     value={stats.openIssues} sub={stats.openIssues>0?"need attention":"all clear"} icon={AlertTriangle} accent="#EF4444"/>
-        <KpiCard label="Assigned Jobs"   value={stats.assignedRequests} icon={UserCheck}        accent="#0EA5E9"/>
-        <KpiCard label="Completion Rate" value={`${stats.completionRate}%`} icon={TrendingUp} trend={2}           accent="#10B981"/>
+        <KpiCard label="Trucks On Route" value={`${stats.trucksOnRoute}/${stats.totalTrucks}`} icon={Truck}  />
+        <KpiCard label="Open Issues"     value={stats.openIssues} sub={stats.openIssues>0?"need attention":"all clear"} icon={AlertTriangle}/>
+        <KpiCard label="Assigned Jobs"   value={stats.assignedRequests} icon={UserCheck}        />
+        <KpiCard label="Completion Rate" value={`${stats.completionRate}%`} icon={TrendingUp} trend={2}          />
       </div>
       <LiveJobsStrip requests={requests}/>
       {/* Recent requests — card list on mobile, table on md+ */}
