@@ -22,6 +22,9 @@ interface Request {
   urgency: "low"|"normal"|"high"; status: string; createdAt: string;
   collectorName?: string; hasOpenIssue?: boolean;
   preferredDate?: string; preferredTime?: string;
+  description?: string;      
+  imageUrls?: string[];       
+  contactPhone?: string;  
 }
 interface Driver {
   _id: string; name: string; email: string;
@@ -397,50 +400,85 @@ function RequestsPanel({ requests, drivers, loading, onAssign, onRefresh }: {
               </div>
 
               {isExp && (
-                <div className="border-t border-gray-100 px-4 py-4 bg-gray-50/60 space-y-4">
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-                    {[
-                      {label:"Amount",        value:r.amount},
-                      {label:"Preferred Time",value:r.preferredTime||"—"},
-                      {label:"Urgency",       value:<span className="capitalize">{r.urgency}</span>},
-                      {label:"Driver",        value:r.collectorName??"Unassigned"},
-                    ].map(({label,value})=>(
-                      <div key={label}>
-                        <p className="text-xs text-gray-400 mb-0.5 font-medium">{label}</p>
-                        <p className="font-semibold text-gray-800">{value}</p>
-                      </div>
-                    ))}
-                  </div>
-                  <a href={`https://maps.google.com/?q=${encodeURIComponent(r.address)}`} target="_blank" rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 font-semibold">
-                    <MapPin className="w-3.5 h-3.5"/>View on Google Maps
-                  </a>
-                  {(r.status==="pending"||r.status==="assigned") && (
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                      <select id={`assign-${r._id}`} defaultValue=""
-                        className="flex-1 px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-400/40">
-                        <option value="" disabled>Select a driver…</option>
-                        {["active","idle","offline"].map(s=>{
-                          const group=drivers.filter(d=>d.status===s);
-                          if(!group.length) return null;
-                          return (
-                            <optgroup key={s} label={s==="active"?"● Online":s==="idle"?"◑ Idle":"○ Offline"}>
-                              {group.map(d=><option key={d._id} value={d._id}>{d.name}{d.activeJob?" (on job)":""}</option>)}
-                            </optgroup>
-                          );
-                        })}
-                      </select>
-                      <button
-                        onClick={()=>{ const sel=document.getElementById(`assign-${r._id}`) as HTMLSelectElement; if(sel.value) handleAssign(r._id,sel.value); }}
-                        disabled={assigningId===r._id}
-                        className="px-5 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-                        {assigningId===r._id ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <UserCheck className="w-3.5 h-3.5"/>}
-                        Assign
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
+  <div className="border-t border-gray-100 px-4 py-4 bg-gray-50/60 space-y-4">
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+      {[
+        {label:"Amount",        value:r.amount},
+        {label:"Preferred Date",value:r.preferredDate||"—"},
+        {label:"Preferred Time",value:r.preferredTime||"—"},
+        {label:"Urgency",       value:<span className="capitalize">{r.urgency}</span>},
+        {label:"Driver",        value:r.collectorName??"Unassigned"},
+        {label:"Contact",       value:r.contactPhone||"—"},
+        {label:"Submitted",     value:new Date(r.createdAt).toLocaleString("en-ZA",{dateStyle:"medium",timeStyle:"short"})},
+        {label:"Waste Type",    value:<span className="capitalize">{r.wasteType}</span>},
+      ].map(({label,value})=>(
+        <div key={label}>
+          <p className="text-xs text-gray-400 mb-0.5 font-medium">{label}</p>
+          <p className="font-semibold text-gray-800 text-sm">{value}</p>
+        </div>
+      ))}
+    </div>
+
+    {r.description && (
+      <div>
+        <p className="text-xs text-gray-400 font-medium mb-1">Description</p>
+        <p className="text-sm text-gray-700 bg-white rounded-xl border border-gray-100 px-3 py-2.5 leading-relaxed">{r.description}</p>
+      </div>
+    )}
+
+    {r.imageUrls && r.imageUrls.length > 0 && (
+      <div>
+        <p className="text-xs text-gray-400 font-medium mb-2">
+          Uploaded Images <span className="text-gray-300">({r.imageUrls.length})</span>
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {r.imageUrls.map((url, idx) => (
+            <a key={idx} href={url} target="_blank" rel="noreferrer"
+              className="group relative block w-24 h-24 rounded-xl overflow-hidden border border-gray-200 hover:border-green-400 transition-colors shadow-sm flex-shrink-0">
+              <img src={url} alt={`Waste image ${idx + 1}`}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"/>
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                <svg className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                </svg>
+              </div>
+            </a>
+          ))}
+        </div>
+      </div>
+    )}
+
+    <a href={`https://maps.google.com/?q=${encodeURIComponent(r.address)}`} target="_blank" rel="noreferrer"
+      className="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 font-semibold">
+      <MapPin className="w-3.5 h-3.5"/>View on Google Maps
+    </a>
+
+    {(r.status==="pending"||r.status==="assigned") && (
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+        <select id={`assign-${r._id}`} defaultValue=""
+          className="flex-1 px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-400/40">
+          <option value="" disabled>Select a driver…</option>
+          {["active","idle","offline"].map(s=>{
+            const group=drivers.filter(d=>d.status===s);
+            if(!group.length) return null;
+            return (
+              <optgroup key={s} label={s==="active"?"● Online":s==="idle"?"◑ Idle":"○ Offline"}>
+                {group.map(d=><option key={d._id} value={d._id}>{d.name}{d.activeJob?" (on job)":""}</option>)}
+              </optgroup>
+            );
+          })}
+        </select>
+        <button
+          onClick={()=>{ const sel=document.getElementById(`assign-${r._id}`) as HTMLSelectElement; if(sel.value) handleAssign(r._id,sel.value); }}
+          disabled={assigningId===r._id}
+          className="px-5 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+          {assigningId===r._id ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <UserCheck className="w-3.5 h-3.5"/>}
+          Assign
+        </button>
+      </div>
+    )}
+  </div>
+)}
             </div>
           );
         })}

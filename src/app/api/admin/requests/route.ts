@@ -68,6 +68,8 @@ export async function GET(req: NextRequest) {
         preferredDate: r.preferredDate ?? null,
         preferredTime: r.preferredTime ?? null,
         description: r.description ?? "",
+        imageUrls: r.imageUrls ?? [],   
+        contactPhone: r.contactPhone ?? "", 
       })),
     });
   } catch (error) {
