@@ -11,6 +11,7 @@ import {
   Zap, Leaf, Recycle, Package, TrendingUp, TrendingDown,
   UserCheck, Download, Loader2, Circle, Shield, Navigation,
   Timer, Wifi, WifiOff, Radio, Plus, Map, Filter, X,
+  Crown, UserCog, ChevronDown,
 } from "lucide-react";
 import { AdminCollectionRequestModal } from "@/components/AdminCollectionRequestModal";
 import { AdminDriverMapModal } from "@/components/AdminDriverMapModal";
@@ -22,9 +23,9 @@ interface Request {
   urgency: "low"|"normal"|"high"; status: string; createdAt: string;
   collectorName?: string; hasOpenIssue?: boolean;
   preferredDate?: string; preferredTime?: string;
-  description?: string;      
-  imageUrls?: string[];       
-  contactPhone?: string;  
+  description?: string;
+  imageUrls?: string[];
+  contactPhone?: string;
 }
 interface Driver {
   _id: string; name: string; email: string;
@@ -44,6 +45,12 @@ interface Stats {
   totalTrucks: number; trucksOnRoute: number; kgCollectedToday: number;
   openIssues: number; requestsTrend: number; completionRate: number;
 }
+interface UserRecord {
+  id: string; name: string; email: string; role: string;
+  phone: string; address: string;
+  totalPoints: number; totalJobsCompleted: number; totalKgCollected: number;
+  createdAt: string | null; lastActiveAt: string | null; isOnline: boolean;
+}
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const NAV_ITEMS = [
@@ -51,6 +58,7 @@ const NAV_ITEMS = [
   { id: "requests", label: "Requests",  short: "Jobs",  Icon: Inbox },
   { id: "drivers",  label: "Drivers",   short: "Crew",  Icon: Users },
   { id: "trucks",   label: "Trucks",    short: "Fleet", Icon: Truck },
+  { id: "users",    label: "Users",     short: "Users", Icon: UserCog },
   { id: "activity", label: "Activity",  short: "Feed",  Icon: Activity },
   { id: "reports",  label: "Reports",   short: "Stats", Icon: BarChart3 },
 ];
@@ -75,6 +83,13 @@ const URGENCY: Record<string, { color:string; bg:string }> = {
   low:    { color:"#16A34A", bg:"#F0FDF4" },
 };
 
+const ROLE_META: Record<string, { label:string; color:string; bg:string; Icon:any }> = {
+  admin:      { label:"Admin",      color:"#7C3AED", bg:"#F5F3FF", Icon:Crown },
+  dispatcher: { label:"Dispatcher", color:"#1E40AF", bg:"#EFF6FF", Icon:Shield },
+  driver:     { label:"Driver",     color:"#065F46", bg:"#F0FDF9", Icon:Truck },
+  user:       { label:"User",       color:"#374151", bg:"#F3F4F6", Icon:Users },
+};
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function timeAgo(dateStr: string | null | undefined): string {
   if (!dateStr) return "never";
@@ -92,6 +107,17 @@ function StatusBadge({ status }: { status: string }) {
     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap"
       style={{ color:m.color, backgroundColor:m.bg }}>
       <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor:m.dot }}/>
+      {m.label}
+    </span>
+  );
+}
+
+function RoleBadge({ role }: { role: string }) {
+  const m = ROLE_META[role] ?? ROLE_META.user;
+  return (
+    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold whitespace-nowrap"
+      style={{ color:m.color, backgroundColor:m.bg }}>
+      <m.Icon className="w-3 h-3 flex-shrink-0"/>
       {m.label}
     </span>
   );
@@ -174,19 +200,18 @@ function OverviewPanel({ stats, requests, loading }: { stats:Stats; requests:Req
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
-        <KpiCard label="Total Requests"  value={stats.totalRequests}    sub={`${stats.pendingRequests} pending`} icon={Inbox}        trend={stats.requestsTrend}/>
-        <KpiCard label="Completed Today" value={stats.completedToday}   sub={`${stats.completionRate}% rate`}    icon={CheckCircle2} trend={4}/>
-        <KpiCard label="Active Drivers"  value={`${stats.activeDrivers}/${stats.totalDrivers}`} sub="on shift"  icon={Users}/>
-        <KpiCard label="Kg Collected"    value={stats.kgCollectedToday} sub="today"                              icon={Weight}       trend={12}/>
+        <KpiCard label="Total Requests"  value={stats.totalRequests}    sub={`${stats.pendingRequests} pending`} icon={Inbox}        trend={stats.requestsTrend} accent="#6366F1"/>
+        <KpiCard label="Completed Today" value={stats.completedToday}   sub={`${stats.completionRate}% rate`}    icon={CheckCircle2} trend={4}                   accent="#10B981"/>
+        <KpiCard label="Active Drivers"  value={`${stats.activeDrivers}/${stats.totalDrivers}`} sub="on shift"  icon={Users}                                    accent="#F59E0B"/>
+        <KpiCard label="Kg Collected"    value={stats.kgCollectedToday} sub="today"                              icon={Weight}       trend={12}                  accent="#3B82F6"/>
       </div>
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
-        <KpiCard label="Trucks On Route" value={`${stats.trucksOnRoute}/${stats.totalTrucks}`} icon={Truck}  />
-        <KpiCard label="Open Issues"     value={stats.openIssues} sub={stats.openIssues>0?"need attention":"all clear"} icon={AlertTriangle}/>
-        <KpiCard label="Assigned Jobs"   value={stats.assignedRequests} icon={UserCheck}        />
-        <KpiCard label="Completion Rate" value={`${stats.completionRate}%`} icon={TrendingUp} trend={2}          />
+        <KpiCard label="Trucks On Route" value={`${stats.trucksOnRoute}/${stats.totalTrucks}`} icon={Truck}       accent="#8B5CF6"/>
+        <KpiCard label="Open Issues"     value={stats.openIssues} sub={stats.openIssues>0?"need attention":"all clear"} icon={AlertTriangle} accent="#EF4444"/>
+        <KpiCard label="Assigned Jobs"   value={stats.assignedRequests} icon={UserCheck}                              accent="#0EA5E9"/>
+        <KpiCard label="Completion Rate" value={`${stats.completionRate}%`} icon={TrendingUp} trend={2}             accent="#22C55E"/>
       </div>
       <LiveJobsStrip requests={requests}/>
-      {/* Recent requests — card list on mobile, table on md+ */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
           <h3 className="font-bold text-gray-900 text-sm">Recent Requests</h3>
@@ -194,8 +219,6 @@ function OverviewPanel({ stats, requests, loading }: { stats:Stats; requests:Req
             {loading?"Refreshing…":"● Live"}
           </span>
         </div>
-
-        {/* Mobile card list */}
         <div className="md:hidden divide-y divide-gray-50">
           {requests.slice(0,6).map(r => {
             const urg = URGENCY[r.urgency];
@@ -222,8 +245,6 @@ function OverviewPanel({ stats, requests, loading }: { stats:Stats; requests:Req
             <div className="text-center py-10 text-gray-400 text-sm">No requests yet</div>
           )}
         </div>
-
-        {/* Desktop table */}
         <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm min-w-[600px]">
             <thead>
@@ -279,12 +300,12 @@ function RequestsPanel({ requests, drivers, loading, onAssign, onRefresh }: {
   requests:Request[]; drivers:Driver[]; loading:boolean;
   onAssign:(reqId:string,drvId:string,drvName:string)=>Promise<void>; onRefresh:()=>void;
 }) {
-  const [search, setSearch]             = useState("");
-  const [filterStatus, setFilterStatus] = useState("all");
+  const [search, setSearch]               = useState("");
+  const [filterStatus, setFilterStatus]   = useState("all");
   const [filterUrgency, setFilterUrgency] = useState("all");
-  const [assigningId, setAssigningId]   = useState<string|null>(null);
-  const [expandedId, setExpandedId]     = useState<string|null>(null);
-  const [showFilters, setShowFilters]   = useState(false);
+  const [assigningId, setAssigningId]     = useState<string|null>(null);
+  const [expandedId, setExpandedId]       = useState<string|null>(null);
+  const [showFilters, setShowFilters]     = useState(false);
 
   const filtered = requests.filter(r => {
     const s = search.toLowerCase();
@@ -306,7 +327,6 @@ function RequestsPanel({ requests, drivers, loading, onAssign, onRefresh }: {
 
   return (
     <div className="space-y-3">
-      {/* Search + filter bar */}
       <div className="flex gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"/>
@@ -331,8 +351,6 @@ function RequestsPanel({ requests, drivers, loading, onAssign, onRefresh }: {
           <span className="hidden sm:inline">Refresh</span>
         </button>
       </div>
-
-      {/* Collapsible filter row */}
       {showFilters && (
         <div className="flex flex-wrap gap-2 p-3 bg-gray-50 rounded-xl border border-gray-100">
           <select value={filterStatus} onChange={e=>setFilterStatus(e.target.value)}
@@ -355,14 +373,12 @@ function RequestsPanel({ requests, drivers, loading, onAssign, onRefresh }: {
           )}
         </div>
       )}
-
       {inProgress.length>0 && (
         <div className="flex items-center gap-2 text-xs font-black text-purple-600 uppercase tracking-widest px-1">
           <LiveDot color="#8B5CF6"/>{inProgress.length} job{inProgress.length!==1?"s":""} in progress — shown first
         </div>
       )}
       <p className="text-xs text-gray-400 font-semibold px-1">{filtered.length} result{filtered.length!==1?"s":""}</p>
-
       <div className="space-y-2">
         {ordered.map(r => {
           const WIcon  = WASTE_ICONS[r.wasteType]??Package;
@@ -398,87 +414,82 @@ function RequestsPanel({ requests, drivers, loading, onAssign, onRefresh }: {
                   <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isExp?"rotate-90":""}`}/>
                 </div>
               </div>
-
               {isExp && (
-  <div className="border-t border-gray-100 px-4 py-4 bg-gray-50/60 space-y-4">
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-      {[
-        {label:"Amount",        value:r.amount},
-        {label:"Preferred Date",value:r.preferredDate||"—"},
-        {label:"Preferred Time",value:r.preferredTime||"—"},
-        {label:"Urgency",       value:<span className="capitalize">{r.urgency}</span>},
-        {label:"Driver",        value:r.collectorName??"Unassigned"},
-        {label:"Contact",       value:r.contactPhone||"—"},
-        {label:"Submitted",     value:new Date(r.createdAt).toLocaleString("en-ZA",{dateStyle:"medium",timeStyle:"short"})},
-        {label:"Waste Type",    value:<span className="capitalize">{r.wasteType}</span>},
-      ].map(({label,value})=>(
-        <div key={label}>
-          <p className="text-xs text-gray-400 mb-0.5 font-medium">{label}</p>
-          <p className="font-semibold text-gray-800 text-sm">{value}</p>
-        </div>
-      ))}
-    </div>
-
-    {r.description && (
-      <div>
-        <p className="text-xs text-gray-400 font-medium mb-1">Description</p>
-        <p className="text-sm text-gray-700 bg-white rounded-xl border border-gray-100 px-3 py-2.5 leading-relaxed">{r.description}</p>
-      </div>
-    )}
-
-    {r.imageUrls && r.imageUrls.length > 0 && (
-      <div>
-        <p className="text-xs text-gray-400 font-medium mb-2">
-          Uploaded Images <span className="text-gray-300">({r.imageUrls.length})</span>
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {r.imageUrls.map((url, idx) => (
-            <a key={idx} href={url} target="_blank" rel="noreferrer"
-              className="group relative block w-24 h-24 rounded-xl overflow-hidden border border-gray-200 hover:border-green-400 transition-colors shadow-sm flex-shrink-0">
-              <img src={url} alt={`Waste image ${idx + 1}`}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"/>
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                <svg className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
-                </svg>
-              </div>
-            </a>
-          ))}
-        </div>
-      </div>
-    )}
-
-    <a href={`https://maps.google.com/?q=${encodeURIComponent(r.address)}`} target="_blank" rel="noreferrer"
-      className="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 font-semibold">
-      <MapPin className="w-3.5 h-3.5"/>View on Google Maps
-    </a>
-
-    {(r.status==="pending"||r.status==="assigned") && (
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-        <select id={`assign-${r._id}`} defaultValue=""
-          className="flex-1 px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-400/40">
-          <option value="" disabled>Select a driver…</option>
-          {["active","idle","offline"].map(s=>{
-            const group=drivers.filter(d=>d.status===s);
-            if(!group.length) return null;
-            return (
-              <optgroup key={s} label={s==="active"?"● Online":s==="idle"?"◑ Idle":"○ Offline"}>
-                {group.map(d=><option key={d._id} value={d._id}>{d.name}{d.activeJob?" (on job)":""}</option>)}
-              </optgroup>
-            );
-          })}
-        </select>
-        <button
-          onClick={()=>{ const sel=document.getElementById(`assign-${r._id}`) as HTMLSelectElement; if(sel.value) handleAssign(r._id,sel.value); }}
-          disabled={assigningId===r._id}
-          className="px-5 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-          {assigningId===r._id ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <UserCheck className="w-3.5 h-3.5"/>}
-          Assign
-        </button>
-      </div>
-    )}
-  </div>
-)}
+                <div className="border-t border-gray-100 px-4 py-4 bg-gray-50/60 space-y-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                    {[
+                      {label:"Amount",        value:r.amount},
+                      {label:"Preferred Date",value:r.preferredDate||"—"},
+                      {label:"Preferred Time",value:r.preferredTime||"—"},
+                      {label:"Urgency",       value:<span className="capitalize">{r.urgency}</span>},
+                      {label:"Driver",        value:r.collectorName??"Unassigned"},
+                      {label:"Contact",       value:r.contactPhone||"—"},
+                      {label:"Submitted",     value:new Date(r.createdAt).toLocaleString("en-ZA",{dateStyle:"medium",timeStyle:"short"})},
+                      {label:"Waste Type",    value:<span className="capitalize">{r.wasteType}</span>},
+                    ].map(({label,value})=>(
+                      <div key={label}>
+                        <p className="text-xs text-gray-400 mb-0.5 font-medium">{label}</p>
+                        <p className="font-semibold text-gray-800 text-sm">{value}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {r.description && (
+                    <div>
+                      <p className="text-xs text-gray-400 font-medium mb-1">Description</p>
+                      <p className="text-sm text-gray-700 bg-white rounded-xl border border-gray-100 px-3 py-2.5 leading-relaxed">{r.description}</p>
+                    </div>
+                  )}
+                  {r.imageUrls && r.imageUrls.length > 0 && (
+                    <div>
+                      <p className="text-xs text-gray-400 font-medium mb-2">
+                        Uploaded Images <span className="text-gray-300">({r.imageUrls.length})</span>
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {r.imageUrls.map((url, idx) => (
+                          <a key={idx} href={url} target="_blank" rel="noreferrer"
+                            className="group relative block w-24 h-24 rounded-xl overflow-hidden border border-gray-200 hover:border-green-400 transition-colors shadow-sm flex-shrink-0">
+                            <img src={url} alt={`Waste image ${idx + 1}`}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"/>
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
+                              <svg className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                              </svg>
+                            </div>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <a href={`https://maps.google.com/?q=${encodeURIComponent(r.address)}`} target="_blank" rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 font-semibold">
+                    <MapPin className="w-3.5 h-3.5"/>View on Google Maps
+                  </a>
+                  {(r.status==="pending"||r.status==="assigned") && (
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                      <select id={`assign-${r._id}`} defaultValue=""
+                        className="flex-1 px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-400/40">
+                        <option value="" disabled>Select a driver…</option>
+                        {["active","idle","offline"].map(s=>{
+                          const group=drivers.filter(d=>d.status===s);
+                          if(!group.length) return null;
+                          return (
+                            <optgroup key={s} label={s==="active"?"● Online":s==="idle"?"◑ Idle":"○ Offline"}>
+                              {group.map(d=><option key={d._id} value={d._id}>{d.name}{d.activeJob?" (on job)":""}</option>)}
+                            </optgroup>
+                          );
+                        })}
+                      </select>
+                      <button
+                        onClick={()=>{ const sel=document.getElementById(`assign-${r._id}`) as HTMLSelectElement; if(sel.value) handleAssign(r._id,sel.value); }}
+                        disabled={assigningId===r._id}
+                        className="px-5 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-bold transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
+                        {assigningId===r._id ? <Loader2 className="w-3.5 h-3.5 animate-spin"/> : <UserCheck className="w-3.5 h-3.5"/>}
+                        Assign
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
@@ -516,7 +527,6 @@ function DriversPanel({ drivers, loading, onOpenMap }: { drivers:Driver[]; loadi
 
   return (
     <div className="space-y-4">
-      {/* Summary strip + Live Map */}
       <div className="flex gap-2 flex-wrap items-center">
         {(["active","idle","offline"] as const).map(s=>{
           const count=drivers.filter(d=>d.status===s).length;
@@ -535,7 +545,6 @@ function DriversPanel({ drivers, loading, onOpenMap }: { drivers:Driver[]; loadi
           <Map className="w-3.5 h-3.5"/>Live Map
         </button>
       </div>
-
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
         {sorted.map(d=>{
           const ss      = SS[d.status];
@@ -564,7 +573,6 @@ function DriversPanel({ drivers, loading, onOpenMap }: { drivers:Driver[]; loadi
                   <span className="hidden sm:inline">{ss.label}</span>
                 </span>
               </div>
-
               {onJob ? (
                 <div className="rounded-xl overflow-hidden border border-purple-100">
                   <div className="bg-purple-600 px-3 py-1.5 flex items-center gap-2">
@@ -584,7 +592,6 @@ function DriversPanel({ drivers, loading, onOpenMap }: { drivers:Driver[]; loadi
                   {d.lastActiveAt && <p className="text-[11px] text-gray-400 mt-0.5">Last seen {timeAgo(d.lastActiveAt)}</p>}
                 </div>
               )}
-
               <div className="grid grid-cols-3 gap-1.5">
                 {[
                   {label:"Jobs",   value:d.totalJobsCompleted},
@@ -656,6 +663,242 @@ function TrucksPanel({ trucks, loading }: { trucks:TruckType[]; loading:boolean 
         <div className="col-span-full text-center py-20 text-gray-400">
           <Truck className="w-10 h-10 mx-auto mb-3 opacity-20"/>
           <p className="font-semibold">No trucks registered yet</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Users ────────────────────────────────────────────────────────────────────
+function UsersPanel({ currentUserId }: { currentUserId: string }) {
+  const [users, setUsers]           = useState<UserRecord[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [search, setSearch]         = useState("");
+  const [filterRole, setFilterRole] = useState("all");
+  const [updatingId, setUpdatingId] = useState<string|null>(null);
+  const [toast, setToast]           = useState<{ msg:string; ok:boolean }|null>(null);
+  const [expandedId, setExpandedId] = useState<string|null>(null);
+
+  const showToast = (msg:string, ok:boolean) => {
+    setToast({ msg, ok });
+    setTimeout(()=>setToast(null), 3500);
+  };
+
+  const fetchUsers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/users");
+      if (res.ok) setUsers((await res.json()).users ?? []);
+    } finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { fetchUsers(); }, [fetchUsers]);
+
+  const handleRoleChange = async (userId: string, newRole: string) => {
+    setUpdatingId(userId);
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, role: newRole }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setUsers(prev => prev.map(u => u.id===userId ? { ...u, role: newRole } : u));
+        showToast(`${data.user.name}'s role updated to ${newRole}`, true);
+      } else {
+        showToast(data.error ?? "Failed to update role", false);
+      }
+    } catch {
+      showToast("Network error", false);
+    } finally { setUpdatingId(null); }
+  };
+
+  const filtered = users.filter(u => {
+    const s = search.toLowerCase();
+    return (!s || u.name.toLowerCase().includes(s) || u.email.toLowerCase().includes(s))
+      && (filterRole==="all" || u.role===filterRole);
+  });
+
+  // Role counts for the summary strip
+  const roleCounts = ["admin","dispatcher","driver","user"].map(r=>({
+    role:r, count:users.filter(u=>u.role===r).length
+  }));
+
+  return (
+    <div className="space-y-3">
+      {/* Toast */}
+      {toast && (
+        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-3 rounded-2xl shadow-lg text-sm font-bold transition-all ${
+          toast.ok ? "bg-emerald-600 text-white" : "bg-red-600 text-white"
+        }`}>
+          {toast.ok ? <CheckCircle2 className="w-4 h-4"/> : <XCircle className="w-4 h-4"/>}
+          {toast.msg}
+        </div>
+      )}
+
+      {/* Role summary strip */}
+      <div className="flex flex-wrap gap-2">
+        {roleCounts.map(({ role, count }) => {
+          const m = ROLE_META[role];
+          return (
+            <button key={role}
+              onClick={() => setFilterRole(filterRole===role ? "all" : role)}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition-all shadow-sm ${
+                filterRole===role
+                  ? "border-current shadow-md scale-[1.02]"
+                  : "border-gray-100 bg-white hover:border-gray-200"
+              }`}
+              style={filterRole===role ? { color:m.color, backgroundColor:m.bg } : { color:"#6B7280" }}>
+              <m.Icon className="w-3.5 h-3.5"/>
+              {count} {m.label}{count!==1?"s":""}
+            </button>
+          );
+        })}
+        <button onClick={fetchUsers}
+          className="ml-auto flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border border-gray-100 bg-white hover:bg-gray-50 text-gray-500 transition-colors shadow-sm">
+          <RefreshCw className={`w-3.5 h-3.5 ${loading?"animate-spin text-green-600":""}`}/>
+          Refresh
+        </button>
+      </div>
+
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"/>
+        <input type="text" placeholder="Search by name or email…" value={search} onChange={e=>setSearch(e.target.value)}
+          className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-400/40 focus:border-green-400 transition-all"/>
+        {(search||filterRole!=="all") && (
+          <button onClick={()=>{setSearch("");setFilterRole("all");}}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+            <X className="w-4 h-4"/>
+          </button>
+        )}
+      </div>
+
+      <p className="text-xs text-gray-400 font-semibold px-1">{filtered.length} user{filtered.length!==1?"s":""}</p>
+
+      {loading ? (
+        <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-green-600"/></div>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map(u => {
+            const isExp     = expandedId===u.id;
+            const isSelf    = u.id===currentUserId;
+            const initials  = u.name.split(" ").map(p=>p[0]).slice(0,2).join("").toUpperCase();
+            const roleMeta  = ROLE_META[u.role] ?? ROLE_META.user;
+            const isUpdating = updatingId===u.id;
+
+            return (
+              <div key={u.id} className={`bg-white rounded-2xl border overflow-hidden shadow-sm transition-all ${
+                isSelf ? "border-green-200" : "border-gray-100 hover:border-gray-200"
+              }`}>
+                {/* Row */}
+                <div className="flex items-center gap-3 px-4 py-3.5 cursor-pointer hover:bg-gray-50/50 transition-colors"
+                  onClick={()=>setExpandedId(isExp?null:u.id)}>
+                  {/* Avatar */}
+                  <div className="relative flex-shrink-0">
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center font-black text-sm text-white shadow-sm"
+                      style={{ background:`linear-gradient(135deg, ${roleMeta.color}cc, ${roleMeta.color})` }}>
+                      {initials}
+                    </div>
+                    {u.isOnline && (
+                      <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-500 border-2 border-white"/>
+                    )}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <p className="font-semibold text-gray-900 text-sm truncate">{u.name}</p>
+                      {isSelf && <span className="text-[10px] font-black text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full">YOU</span>}
+                    </div>
+                    <p className="text-xs text-gray-400 truncate">{u.email}</p>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <RoleBadge role={u.role}/>
+                    <ChevronRight className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${isExp?"rotate-90":""}`}/>
+                  </div>
+                </div>
+
+                {/* Expanded detail */}
+                {isExp && (
+                  <div className="border-t border-gray-100 px-4 py-4 bg-gray-50/60 space-y-4">
+                    {/* Info grid */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {[
+                        { label:"Phone",    value:u.phone||"—" },
+                        { label:"Address",  value:u.address||"—" },
+                        { label:"Joined",   value:u.createdAt ? new Date(u.createdAt).toLocaleDateString("en-ZA",{dateStyle:"medium"}) : "—" },
+                        { label:"Last Seen",value:u.isOnline ? "Online now" : timeAgo(u.lastActiveAt) },
+                      ].map(({ label, value }) => (
+                        <div key={label}>
+                          <p className="text-xs text-gray-400 mb-0.5 font-medium">{label}</p>
+                          <p className="font-semibold text-gray-800 text-sm truncate">{value}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Stats */}
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { label:"Jobs Done", value:u.totalJobsCompleted, color:"#10B981" },
+                        { label:"Kg Collected", value:u.totalKgCollected?.toFixed(0)??"0", color:"#3B82F6" },
+                        { label:"Points", value:u.totalPoints, color:"#F59E0B" },
+                      ].map(({ label, value, color }) => (
+                        <div key={label} className="rounded-xl p-3 text-center border border-gray-100 bg-white">
+                          <p className="font-black font-mono text-lg" style={{ color }}>{value}</p>
+                          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wide mt-0.5">{label}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Role changer — disabled for self */}
+                    {isSelf ? (
+                      <div className="flex items-center gap-2 p-3 bg-green-50 rounded-xl border border-green-100">
+                        <Shield className="w-4 h-4 text-green-600 flex-shrink-0"/>
+                        <p className="text-xs text-green-700 font-semibold">You cannot change your own role.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">Change Role</p>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                          {(["user","driver","dispatcher","admin"] as const).map(role => {
+                            const rm = ROLE_META[role];
+                            const isActive = u.role===role;
+                            return (
+                              <button key={role}
+                                onClick={()=>!isActive && handleRoleChange(u.id, role)}
+                                disabled={isUpdating || isActive}
+                                className={`flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold border transition-all ${
+                                  isActive
+                                    ? "border-current shadow-sm cursor-default"
+                                    : "border-gray-200 bg-white hover:border-current hover:shadow-sm"
+                                } disabled:opacity-60`}
+                                style={isActive ? { color:rm.color, backgroundColor:rm.bg } : { color:"#6B7280" }}>
+                                {isUpdating && !isActive
+                                  ? <Loader2 className="w-3 h-3 animate-spin"/>
+                                  : <rm.Icon className="w-3 h-3"/>
+                                }
+                                {rm.label}
+                                {isActive && <CheckCircle2 className="w-3 h-3 ml-0.5"/>}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {filtered.length===0 && !loading && (
+            <div className="text-center py-16 text-gray-400">
+              <Users className="w-10 h-10 mx-auto mb-3 opacity-20"/>
+              <p className="font-semibold">No users match your search</p>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -869,8 +1112,6 @@ export default function AdminPage() {
       {/* ── Sticky top bar ── */}
       <div className="bg-white border-b border-gray-100 sticky top-0 z-20 shadow-sm">
         <div className="max-w-screen-2xl mx-auto px-3 sm:px-5 lg:px-8">
-
-          {/* Top row */}
           <div className="flex items-center justify-between py-2.5 gap-2">
             <div className="flex items-center gap-2 min-w-0">
               <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-green-800 to-emerald-600 flex items-center justify-center shadow-sm flex-shrink-0">
@@ -888,7 +1129,6 @@ export default function AdminPage() {
                 </span>
               )}
             </div>
-
             <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
               <span className="text-xs text-gray-400 hidden lg:block font-medium">
                 {lastRefresh.toLocaleTimeString("en-ZA",{hour:"2-digit",minute:"2-digit"})}
@@ -910,7 +1150,7 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {/* Tab nav — scrollable, icon-only on very small screens */}
+          {/* Tab nav */}
           <div className="flex -mb-px overflow-x-auto scrollbar-none gap-0.5">
             {NAV_ITEMS.map(({id,label,short,Icon})=>(
               <button key={id} onClick={()=>setActiveTab(id)}
@@ -938,6 +1178,7 @@ export default function AdminPage() {
         {activeTab==="requests" && <RequestsPanel requests={requests} drivers={drivers} loading={dataLoading} onAssign={handleAssign} onRefresh={fetchAll}/>}
         {activeTab==="drivers"  && <DriversPanel  drivers={drivers}  loading={dataLoading} onOpenMap={()=>setShowDriverMap(true)}/>}
         {activeTab==="trucks"   && <TrucksPanel   trucks={trucks}    loading={dataLoading}/>}
+        {activeTab==="users"    && <UsersPanel     currentUserId={(user as any)?._id ?? (user as any)?.id ?? ""} />}
         {activeTab==="activity" && <ActivityPanel activity={activity} loading={dataLoading}/>}
         {activeTab==="reports"  && <ReportsPanel  stats={stats} requests={requests}/>}
       </div>

@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { X, Leaf, Eye, EyeOff, Loader2 } from "lucide-react";
+import Image from "next/image"
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -80,10 +81,14 @@ export default function AuthModal({ isOpen, onClose, defaultMode = "login" }: Au
         <div className="px-8 pt-8 pb-10">
           {/* Logo */}
           <div className="flex items-center justify-center mb-6">
-            <div className="flex items-center gap-2">
-              <div className="bg-green-600 rounded-full p-2">
-                <Leaf className="h-5 w-5 text-white" />
-              </div>
+            <div className="flex items-center">
+                <Image
+                    src="/logo.png"
+                    alt="GreenKidSA Logo"
+                    width={72}
+                    height={72}
+                    className="sm:block object-contain shrink-0"
+                  />
               <span className="font-bold text-xl text-gray-800 tracking-tight">GreenKidSA</span>
             </div>
           </div>
