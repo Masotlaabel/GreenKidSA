@@ -269,7 +269,7 @@ export default function ServicesPage() {
         </div>
 
         {/* BanQu callout */}
-        <div className="mt-10 bg-green-900 rounded-3xl p-8 md:p-10 grid md:grid-cols-2 gap-8 items-center">
+        {/*<div className="mt-10 bg-green-900 rounded-3xl p-8 md:p-10 grid md:grid-cols-2 gap-8 items-center">
           <div>
             <div className="flex items-center gap-3 mb-4">
               <Wallet className="w-7 h-7 text-green-400" />
@@ -293,7 +293,7 @@ export default function ServicesPage() {
               </div>
             ))}
           </div>
-        </div>
+        </div>*/}
       </section>
 
       <div className="section-line max-w-6xl mx-auto px-6" />
